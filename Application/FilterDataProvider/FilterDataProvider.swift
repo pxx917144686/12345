@@ -49,25 +49,19 @@ class FilterDataProvider: NEFilterDataProvider {
         completionHandler()
     }
     
-    // 此方法决定是否需要处理流量
+    // 处理新的网络流
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
-        // 仅处理HTTP流量
-        guard let httpFlow = flow as? NEFilterHTTPFlow,
-              let url = httpFlow.request?.url,
-              let host = url.host else {
-            return .allow()
+        // 检查是否是iTunes验证请求 - 不使用HTTPFlow类型，直接从通用Flow中获取信息
+        if let remoteEndpoint = flow.remoteEndpoint as? NWHostEndpoint,
+           let host = remoteEndpoint.hostname,
+           (host.contains("buy.itunes.apple.com") || 
+            host.contains("sandbox.itunes.apple.com")) {
+            
+            logger.log("检测到Apple收据验证请求: \(host)")
         }
         
-        // 检查是否是Apple验证请求
-        if host.contains("buy.itunes.apple.com") || host.contains("sandbox.itunes.apple.com") {
-            logger.log("检测到Apple收据验证请求")
-            // 最简单的方法：我们直接返回允许，不尝试修改响应
-            // 如果确定iOS 15支持其他API，可以在这里修改
-            return .allow()
-        }
-        
+        // 简化处理：仅允许所有流量通过
+        // 在iOS 15上不尝试修改响应数据
         return .allow()
     }
-    
-    // 不再实现复杂的数据处理方法，避免API兼容性问题
 }
