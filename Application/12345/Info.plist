@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NEProviderClasses</key>
+    <dict>
+        <key>com.apple.networkextension.filter-data</key>
+        <string>FilterDataProvider</string>
+    </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>需要使用本地网络来拦截内购验证请求</string>
+</dict>
+</plist>

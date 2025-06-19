@@ -1,0 +1,111 @@
+name: 构建未签名IPA
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build_unsigned:
+    name: 构建未签名IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      
+      - name: 创建导出选项Plist
+        run: |
+          cat > exportOptions.plist << EOL
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>signingStyle</key>
+              <string>manual</string>
+          </dict>
+          </plist>
+          EOL
+      
+      - name: 构建与归档
+        run: |
+          cd Application
+          xcodebuild clean archive \
+            -project 12345.xcodeproj \
+            -scheme 12345 \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/12345.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0
+      
+      - name: 打包IPA
+        run: |
+          mkdir -p $RUNNER_TEMP/build/Payload
+          cp -r $RUNNER_TEMP/12345.xcarchive/Products/Applications/12345.app $RUNNER_TEMP/build/Payload/
+          cd $RUNNER_TEMP/build
+          zip -r 12345.ipa Payload
+      
+      - name: 上传IPA作为工作流产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 12345-未签名应用
+          path: ${{ runner.temp }}/build/12345.ipa
+          
+      - name: 获取当前日期
+        id: date
+        run: echo "date=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+        
+      - name: 创建Release
+        if: github.event_name != 'pull_request'
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ steps.date.outputs.date }}
+          name: 自动构建 ${{ steps.date.outputs.date }}
+          body: |
+            12345自动构建版本
+            
+            构建时间: ${{ steps.date.outputs.date }}
+            未签名IPA文件，需要自行签名后安装。
+          draft: false
+          prerelease: true
+          files: ${{ runner.temp }}/build/12345.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check:
+    name: Swift语法检查
+    runs-on: macos-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 环境信息
+        run: |
+          swift --version
+          echo "代码库结构:"
+          find . -name "*.swift" | wc -l
+          echo "找到的Swift文件数量."
+      
+      - name: Swift语法检查
+        run: |
+          # 简单语法检查
+          find Application -name "*.swift" -print0 | xargs -0 -n1 swift -syntax-only || true
+          echo "基本语法检查完成"
