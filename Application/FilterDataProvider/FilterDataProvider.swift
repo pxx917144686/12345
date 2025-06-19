@@ -114,7 +114,7 @@ class FilterDataProvider: NEFilterDataProvider {
                     
                     logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
                     // 修正: 使用正确的API
-                    return .allow(withDataModification: fullResponse)
+                    return NEFilterDataVerdict.dataModified(fullResponse)
                 }
             }
         }
