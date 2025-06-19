@@ -1,11 +1,43 @@
 import NetworkExtension
 import os.log
-@_exported import NetworkExtension
+
+// 添加简化版的ReceiptGenerator到扩展中，避免跨模块引用问题
+class ReceiptGeneratorHelper {
+    static func response(for productID: String, bundleID: String? = nil) -> Data? {
+        let now = Date()
+        let expiration = Date(timeIntervalSince1970: 4092599349) // 2099年
+        
+        // 创建基础收据内容
+        let receipt: [String: Any] = [
+            "status": 0,
+            "environment": "Production",
+            "receipt": [
+                "receipt_type": "Production",
+                "bundle_id": bundleID ?? "com.example.app",
+                "in_app": [[
+                    "quantity": "1",
+                    "product_id": productID,
+                    "transaction_id": "\(Int64.random(in: 100000000000000...999999999999999))",
+                    "purchase_date": formatDate(now),
+                    "expires_date": formatDate(expiration),
+                    "is_trial_period": "false"
+                ]]
+            ],
+            "latest_receipt": "MIIUHAYJKoZIhvcNAQcCoIIUDTCCFA" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        ]
+        
+        return try? JSONSerialization.data(withJSONObject: receipt, options: [])
+    }
+    
+    private static func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss 'Etc/GMT'"
+        return formatter.string(from: date)
+    }
+}
 
 class FilterDataProvider: NEFilterDataProvider {
     private let logger = Logger(subsystem: "com.pxx917144686.inappproxy", category: "FilterDataProvider")
-    
-    // 从SatellaJailed的URLHook移植的逻辑
     
     override func startFilter(completionHandler: @escaping (Error?) -> Void) {
         logger.log("网络过滤服务已启动")
@@ -27,10 +59,11 @@ class FilterDataProvider: NEFilterDataProvider {
             return .allow()
         }
         
-        // 检查是否是验证收据的请求 (从SatellaJailed的URLHook移植)
+        // 检查是否是验证收据的请求
         if remoteEndpoint.hostname.contains("buy.itunes.apple.com") {
             logger.log("检测到潜在的App Store验证请求")
-            return .needMoreData()
+            // 修正: 使用正确的API
+            return .filterDataRequired()
         }
         
         return .allow()
@@ -60,8 +93,8 @@ class FilterDataProvider: NEFilterDataProvider {
                 
                 logger.log("提取的信息 - bundleID: \(bundleID), productID: \(productID)")
                 
-                // 生成虚假收据 (从SatellaJailed的ReceiptGenerator移植)
-                if let jsonData = ReceiptGenerator.response(for: productID, bundleID: bundleID) {
+                // 使用内联版本的ReceiptGenerator
+                if let jsonData = ReceiptGeneratorHelper.response(for: productID, bundleID: bundleID) {
                     
                     // 构造HTTP响应
                     let httpResponse = """
@@ -72,7 +105,7 @@ class FilterDataProvider: NEFilterDataProvider {
                     
                     """
                     
-                    guard let headerData = httpResponse.data(using: .utf8) else {
+                    guard let headerData = httpResponse.data(using: String.Encoding.utf8) else {
                         return .allow()
                     }
                     
@@ -80,7 +113,8 @@ class FilterDataProvider: NEFilterDataProvider {
                     fullResponse.append(jsonData)
                     
                     logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
-                    return .reply(fullResponse)
+                    // 修正: 使用正确的API
+                    return .allowDataWithModification(fullResponse)
                 }
             }
         }
