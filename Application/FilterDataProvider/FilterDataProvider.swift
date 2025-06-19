@@ -49,7 +49,7 @@ class FilterDataProvider: NEFilterDataProvider {
         completionHandler()
     }
     
-    // 处理新的网络流 - 极简版
+    // 处理新的网络流
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
         // iOS 15上基于URL路径判断是否是iTunes验证请求
         return .allow()
