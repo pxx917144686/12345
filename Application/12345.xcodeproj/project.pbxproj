@@ -424,7 +424,7 @@
                 CODE_SIGN_ENTITLEMENTS = 12345/12345.entitlements;
                 CODE_SIGN_STYLE = Automatic;
                 CURRENT_PROJECT_VERSION = 1;
-                DEVELOPMENT_ASSET_PATHS = "\"12345/Preview Content\"";
+                DEVELOPMENT_ASSET_PATHS = "";
                 DEVELOPMENT_TEAM = pxx917144686;
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
@@ -462,7 +462,7 @@
                 CODE_SIGN_ENTITLEMENTS = 12345/12345.entitlements;
                 CODE_SIGN_STYLE = Automatic;
                 CURRENT_PROJECT_VERSION = 1;
-                DEVELOPMENT_ASSET_PATHS = "\"12345/Preview Content\"";
+                DEVELOPMENT_ASSET_PATHS = "";
                 DEVELOPMENT_TEAM = pxx917144686;
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
