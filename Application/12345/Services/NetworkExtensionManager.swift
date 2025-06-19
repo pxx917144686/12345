@@ -9,17 +9,25 @@ class NetworkExtensionManager {
     func startNetworkExtension(completion: @escaping (Bool, String) -> Void) {
         // 先请求权限
         NEFilterManager.shared().loadFromPreferences { [weak self] error in
-            if let error = error as NSError?, error.domain == NEFilterErrorDomain, error.code == NEFilterError.needPermission.rawValue {
-                // 需要请求权限
-                self?.logger.info("正在请求网络过滤权限")
-                NEFilterManager.shared().loadFromPreferences { error in
-                    if let error = error {
-                        self?.logger.error("权限请求失败: \(error.localizedDescription)")
-                        completion(false, "权限请求失败: \(error.localizedDescription)")
-                        return
+            if let nsError = error as NSError? {
+                // 检查是否是需要权限的错误
+                // NEFilterError.needPermission的代码值是1
+                if nsError.domain == "NEFilterErrorDomain" && nsError.code == 1 {
+                    // 需要请求权限
+                    self?.logger.info("正在请求网络过滤权限")
+                    NEFilterManager.shared().loadFromPreferences { error in
+                        if let error = error {
+                            self?.logger.error("权限请求失败: \(error.localizedDescription)")
+                            completion(false, "权限请求失败: \(error.localizedDescription)")
+                            return
+                        }
+                        // 权限获取成功后继续配置
+                        self?.configureAndStartFilter(completion: completion)
                     }
-                    // 权限获取成功后继续配置
-                    self?.configureAndStartFilter(completion: completion)
+                } else {
+                    // 其他错误
+                    self?.logger.error("加载配置失败: \(nsError.localizedDescription)")
+                    completion(false, "加载配置失败: \(nsError.localizedDescription)")
                 }
             } else {
                 // 已有权限，直接配置
@@ -46,8 +54,27 @@ class NetworkExtensionManager {
         // 保存配置
         filterManager.saveToPreferences { [weak self] error in
             if let error = error {
-                self?.logger.error("保存网络扩展配置失败: \(error.localizedDescription)")
-                completion(false, "保存配置失败: \(error.localizedDescription)")
+                let nsError = error as NSError
+                self?.logger.error("保存网络扩展配置失败: 域=\(nsError.domain), 代码=\(nsError.code), 描述=\(nsError.localizedDescription)")
+                
+                // 针对常见错误给出更具体的信息
+                let errorMessage: String
+                if nsError.domain == "NEFilterErrorDomain" {
+                    switch nsError.code {
+                    case 1: // NEFilterError.needPermission
+                        errorMessage = "需要权限许可，请确认已授予应用网络过滤权限"
+                    case 3: // NEFilterError.configurationInvalid
+                        errorMessage = "配置无效，请检查NetworkExtension配置"
+                    case 4: // NEFilterError.configurationDisabled
+                        errorMessage = "配置已禁用，请尝试重新启用NetworkExtension"
+                    default:
+                        errorMessage = "发生错误: \(error.localizedDescription)"
+                    }
+                } else {
+                    errorMessage = "保存配置失败: \(error.localizedDescription)"
+                }
+                
+                completion(false, errorMessage)
             } else {
                 self?.logger.info("网络扩展启动成功")
                 completion(true, "网络扩展已启动")
