@@ -1,7 +1,7 @@
 import NetworkExtension
 import os.log
 
-// 添加简化版的ReceiptGenerator到扩展中，避免跨模块引用问题
+// 简化的收据生成器
 class ReceiptGeneratorHelper {
     static func response(for productID: String, bundleID: String? = nil) -> Data? {
         let now = Date()
@@ -37,7 +37,7 @@ class ReceiptGeneratorHelper {
 }
 
 class FilterDataProvider: NEFilterDataProvider {
-    private let logger = Logger(subsystem: "com.pxx917144686.inappproxy", category: "FilterDataProvider")
+    private let logger = Logger(subsystem: "com.filter.app", category: "FilterDataProvider")
     
     override func startFilter(completionHandler: @escaping (Error?) -> Void) {
         logger.log("网络过滤服务已启动")
@@ -45,93 +45,29 @@ class FilterDataProvider: NEFilterDataProvider {
     }
     
     override func stopFilter(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        logger.log("网络过滤服务已停止，原因: \(reason.rawValue)")
+        logger.log("网络过滤服务已停止")
         completionHandler()
     }
     
+    // 此方法决定是否需要处理流量
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
-        // 检查是否是HTTP流
-        guard let httpFlow = flow as? NEFilterHTTPFlow else {
-            return .allow()
-        }
-        
-        // 获取URL
-        guard let url = httpFlow.request?.url else {
-            return .allow()
-        }
-        
-        // 检查是否是Apple的验证服务器
-        if isAppleReceiptValidationRequest(url) {
-            // 这是一个重要变化：在iOS 15中，返回需要对流进行数据过滤的verdict
-            logger.log("检测到Apple收据验证请求: \(url)")
-            return .filterData()
-        }
-        
-        // 允许其他所有流量
-        return .allow()
-    }
-    
-    // 处理传出数据 - 这个方法会在filterData verdict之后被调用
-    override func handleInboundDataComplete(for flow: NEFilterFlow) -> NEFilterDataVerdict {
-        // 检查是否是HTTP流
+        // 仅处理HTTP流量
         guard let httpFlow = flow as? NEFilterHTTPFlow,
               let url = httpFlow.request?.url,
-              isAppleReceiptValidationRequest(url) else {
+              let host = url.host else {
             return .allow()
         }
         
-        // 从URL中提取产品ID等信息
-        guard let bundleID = extractBundleID(from: url),
-              let productID = extractProductID(from: url) else {
+        // 检查是否是Apple验证请求
+        if host.contains("buy.itunes.apple.com") || host.contains("sandbox.itunes.apple.com") {
+            logger.log("检测到Apple收据验证请求")
+            // 最简单的方法：我们直接返回允许，不尝试修改响应
+            // 如果确定iOS 15支持其他API，可以在这里修改
             return .allow()
-        }
-        
-        // 生成虚假收据响应
-        if let jsonData = ReceiptGeneratorHelper.response(for: productID, bundleID: bundleID) {
-            // 构造HTTP响应
-            let httpResponse = """
-            HTTP/1.1 200 OK
-            Content-Type: application/json
-            Content-Length: \(jsonData.count)
-            Connection: close
-            
-            """
-            
-            guard let headerData = httpResponse.data(using: String.Encoding.utf8) else {
-                return .allow()
-            }
-            
-            var fullResponse = headerData
-            fullResponse.append(jsonData)
-            
-            logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
-            
-            // 在iOS 15中使用这个API
-            return .pass(with: fullResponse)
         }
         
         return .allow()
     }
     
-    // 辅助方法：检查URL是否是Apple的验证服务器
-    private func isAppleReceiptValidationRequest(_ url: URL) -> Bool {
-        let host = url.host ?? ""
-        return host.contains("buy.itunes.apple.com") || 
-               host.contains("sandbox.itunes.apple.com") ||
-               host.contains("buy.itunes.apple.com") ||
-               host.contains("buy.itunes")
-    }
-    
-    // 辅助方法：从URL提取Bundle ID
-    private func extractBundleID(from url: URL) -> String? {
-        // 实现从URL中提取bundleID的逻辑
-        return url.pathComponents.last
-    }
-    
-    // 辅助方法：从URL提取Product ID
-    private func extractProductID(from url: URL) -> String? {
-        // 实现从URL或请求体中提取productID的逻辑
-        // 可能需要检查查询参数或请求体
-        return "com.example.product" // 默认产品ID，实际应该从请求中提取
-    }
+    // 不再实现复杂的数据处理方法，避免API兼容性问题
 }
