@@ -7,36 +7,50 @@ class NetworkExtensionManager {
     
     // 启动网络扩展
     func startNetworkExtension(completion: @escaping (Bool, String) -> Void) {
+        // 先请求权限
+        NEFilterManager.shared().loadFromPreferences { [weak self] error in
+            if let error = error as NSError?, error.domain == NEFilterErrorDomain, error.code == NEFilterError.needPermission.rawValue {
+                // 需要请求权限
+                self?.logger.info("正在请求网络过滤权限")
+                NEFilterManager.shared().loadFromPreferences { error in
+                    if let error = error {
+                        self?.logger.error("权限请求失败: \(error.localizedDescription)")
+                        completion(false, "权限请求失败: \(error.localizedDescription)")
+                        return
+                    }
+                    // 权限获取成功后继续配置
+                    self?.configureAndStartFilter(completion: completion)
+                }
+            } else {
+                // 已有权限，直接配置
+                self?.configureAndStartFilter(completion: completion)
+            }
+        }
+    }
+    
+    // 将原来的逻辑移到这个方法中
+    private func configureAndStartFilter(completion: @escaping (Bool, String) -> Void) {
         let filterManager = NEFilterManager.shared()
         
-        filterManager.loadFromPreferences { [weak self] error in
+        // 创建过滤器配置
+        let config = NEFilterProviderConfiguration()
+        config.filterBrowsers = false
+        config.filterSockets = true
+        
+        // 设置配置
+        filterManager.providerConfiguration = config
+        
+        // 启用过滤器
+        filterManager.isEnabled = true
+        
+        // 保存配置
+        filterManager.saveToPreferences { [weak self] error in
             if let error = error {
-                self?.logger.error("加载网络扩展配置失败: \(error.localizedDescription)")
-                completion(false, "加载配置失败: \(error.localizedDescription)")
-                return
-            }
-            
-            // 创建过滤器配置
-            let config = NEFilterProviderConfiguration()
-            config.filterBrowsers = false
-            config.filterSockets = true
-            
-            // 设置过滤提供者 - 改为使用Bundle标识符
-            let bundleId = Bundle.main.bundleIdentifier!
-            filterManager.providerConfiguration = config
-            
-            // 启用过滤器
-            filterManager.isEnabled = true
-            
-            // 保存配置
-            filterManager.saveToPreferences { error in
-                if let error = error {
-                    self?.logger.error("保存网络扩展配置失败: \(error.localizedDescription)")
-                    completion(false, "保存配置失败: \(error.localizedDescription)")
-                } else {
-                    self?.logger.info("网络扩展启动成功")
-                    completion(true, "网络扩展已启动")
-                }
+                self?.logger.error("保存网络扩展配置失败: \(error.localizedDescription)")
+                completion(false, "保存配置失败: \(error.localizedDescription)")
+            } else {
+                self?.logger.info("网络扩展启动成功")
+                completion(true, "网络扩展已启动")
             }
         }
     }

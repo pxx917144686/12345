@@ -11,10 +11,10 @@ struct ContentView: View {
         VStack(spacing: 20) {
             // 标题和Logo
             VStack {
-                Text("SatellaProxy")
+                Text("12345")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                Text("基于SatellaJailed技术")
+                Text("试图 在未越狱环境 一键内购APP付费")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -73,7 +73,7 @@ struct ContentView: View {
                 .font(.callout)
                 .padding(.leading, 10)
                 
-                Text("注意: 本程序仅用于学习研究，不应用于非法用途")
+                Text("注意: 仅用于学习研究，由pxx917144686手搓")
                     .font(.footnote)
                     .foregroundColor(.secondary)
                     .padding(.top, 5)
@@ -87,7 +87,7 @@ struct ContentView: View {
             Spacer()
             
             // 版权信息
-            Text("© 2025 SatellaProxy")
+            Text("© 2025 12345 for pxx917144686")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
