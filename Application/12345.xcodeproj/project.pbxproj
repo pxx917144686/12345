@@ -22,23 +22,14 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-    E1FB2FA01DCE4390005C602C /* PBXContainerItemProxy */ = {
-        isa = PBXContainerItemProxy;
-        containerPortal = E1FB1F6C2DCE42D0005C602C /* Project object */;
-        proxyType = 1;
--       remoteGlobalIDString = E1FB2FA21DCE43A0005C602C;
-+       remoteGlobalIDString = E1FB2FA21DCE43A0005C602C;
-        remoteInfo = FilterDataProvider;
-    };
+        E1FB2FA01DCE4390005C602C /* PBXContainerItemProxy */ = {
+            isa = PBXContainerItemProxy;
+            containerPortal = E1FB1F6C2DCE42D0005C602C /* Project object */;
+            proxyType = 1;
+            remoteGlobalIDString = E1FB2FA21DCE43A0005C602C;
+            remoteInfo = FilterDataProvider;
+        };
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXTargetDependency section */
-    E1FB2FA01DCE4390005C602C /* PBXTargetDependency */ = {
-        isa = PBXTargetDependency;
--       target = E1FB2FA21DCE43A0005C602C /* FilterDataProvider */;
-+       targetProxy = E1FB2FA01DCE4390005C602C /* PBXContainerItemProxy */;
-    };
-/* End PBXTargetDependency section */
 
 /* Begin PBXCopyFilesBuildPhase section */
         E1FB2FA41DCE43B0005C602C /* Embed Foundation Extensions */ = {
