@@ -63,7 +63,7 @@ class FilterDataProvider: NEFilterDataProvider {
         if remoteEndpoint.hostname.contains("buy.itunes.apple.com") {
             logger.log("检测到潜在的App Store验证请求")
             // 修正: 使用正确的API
-            return .filterDataRequired()
+            return .needRules()
         }
         
         return .allow()
@@ -114,7 +114,7 @@ class FilterDataProvider: NEFilterDataProvider {
                     
                     logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
                     // 修正: 使用正确的API
-                    return .allowDataWithModification(fullResponse)
+                    return .allow(withDataModification: fullResponse)
                 }
             }
         }
