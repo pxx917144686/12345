@@ -50,112 +50,88 @@ class FilterDataProvider: NEFilterDataProvider {
     }
     
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
-        guard let httpFlow = flow as? NEFilterSocketFlow else {
+        // 检查是否是HTTP流
+        guard let httpFlow = flow as? NEFilterHTTPFlow else {
             return .allow()
         }
         
-        // 获取远程端点信息
-        guard let remoteEndpoint = httpFlow.remoteEndpoint as? NWHostEndpoint else {
+        // 获取URL
+        guard let url = httpFlow.request?.url else {
             return .allow()
         }
         
-        // 检查是否是验证收据的请求
-        if remoteEndpoint.hostname.contains("buy.itunes.apple.com") {
-            logger.log("检测到潜在的App Store验证请求")
-            // 修正: 使用正确的API
-            return .needRules()
+        // 检查是否是Apple的验证服务器
+        if isAppleReceiptValidationRequest(url) {
+            // 这是一个重要变化：在iOS 15中，返回需要对流进行数据过滤的verdict
+            logger.log("检测到Apple收据验证请求: \(url)")
+            return .filterData()
         }
         
+        // 允许其他所有流量
         return .allow()
     }
     
-    override func handleInboundData(from flow: NEFilterFlow, readBytesStartOffset offset: Int, readBytes: Data) -> NEFilterDataVerdict {
-        // 处理入站数据
-        return .allow()
-    }
-    
-    override func handleOutboundData(from flow: NEFilterFlow, readBytesStartOffset offset: Int, readBytes: Data) -> NEFilterDataVerdict {
-        guard let httpFlow = flow as? NEFilterSocketFlow,
-              let remoteEndpoint = httpFlow.remoteEndpoint as? NWHostEndpoint else {
+    // 处理传出数据 - 这个方法会在filterData verdict之后被调用
+    override func handleInboundDataComplete(for flow: NEFilterFlow) -> NEFilterDataVerdict {
+        // 检查是否是HTTP流
+        guard let httpFlow = flow as? NEFilterHTTPFlow,
+              let url = httpFlow.request?.url,
+              isAppleReceiptValidationRequest(url) else {
             return .allow()
         }
         
-        // 检测App Store验证请求
-        if remoteEndpoint.hostname.contains("buy.itunes.apple.com") {
-            if let requestStr = String(data: readBytes, encoding: .utf8),
-               requestStr.contains("verifyReceipt") {
-                
-                logger.log("检测到验证收据请求")
-                
-                // 尝试解析请求，查找bundle_id和product_id
-                let bundleID = extractBundleID(from: readBytes) ?? "unknown.bundle"
-                let productID = extractProductID(from: readBytes) ?? "\(bundleID).yearly"
-                
-                logger.log("提取的信息 - bundleID: \(bundleID), productID: \(productID)")
-                
-                // 使用内联版本的ReceiptGenerator
-                if let jsonData = ReceiptGeneratorHelper.response(for: productID, bundleID: bundleID) {
-                    
-                    // 构造HTTP响应
-                    let httpResponse = """
-                    HTTP/1.1 200 OK
-                    Content-Type: application/json
-                    Content-Length: \(jsonData.count)
-                    Connection: close
-                    
-                    """
-                    
-                    guard let headerData = httpResponse.data(using: String.Encoding.utf8) else {
-                        return .allow()
-                    }
-                    
-                    var fullResponse = headerData
-                    fullResponse.append(jsonData)
-                    
-                    logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
-                    return NEFilterDataVerdict.responseData(fullResponse)
-                }
-            }
+        // 从URL中提取产品ID等信息
+        guard let bundleID = extractBundleID(from: url),
+              let productID = extractProductID(from: url) else {
+            return .allow()
         }
         
-        return .allow()
-    }
-    
-    // 辅助方法：从请求中提取bundle_id
-    private func extractBundleID(from data: Data) -> String? {
-        guard let jsonString = String(data: data, encoding: .utf8) else { return nil }
-        
-        // 尝试找出bundle_id
-        let patterns = ["\"bundle_id\"\\s*:\\s*\"([^\"]+)\"", "\"Bundle_Id\"\\s*:\\s*\"([^\"]+)\""]
-        
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-               let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.utf16.count)) {
-                
-                if let range = Range(match.range(at: 1), in: jsonString) {
-                    return String(jsonString[range])
-                }
-            }
-        }
-        
-        return nil
-    }
-    
-    // 辅助方法：从请求中提取product_id
-    private func extractProductID(from data: Data) -> String? {
-        guard let jsonString = String(data: data, encoding: .utf8) else { return nil }
-        
-        // 尝试找出product_id
-        let pattern = "\"product_id\"\\s*:\\s*\"([^\"]+)\""
-        
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-           let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.utf16.count)) {
+        // 生成虚假收据响应
+        if let jsonData = ReceiptGeneratorHelper.response(for: productID, bundleID: bundleID) {
+            // 构造HTTP响应
+            let httpResponse = """
+            HTTP/1.1 200 OK
+            Content-Type: application/json
+            Content-Length: \(jsonData.count)
+            Connection: close
             
-            if let range = Range(match.range(at: 1), in: jsonString) {
-                return String(jsonString[range])
+            """
+            
+            guard let headerData = httpResponse.data(using: String.Encoding.utf8) else {
+                return .allow()
             }
+            
+            var fullResponse = headerData
+            fullResponse.append(jsonData)
+            
+            logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
+            
+            // 在iOS 15中使用这个API
+            return .pass(with: fullResponse)
         }
         
-        return nil
+        return .allow()
+    }
+    
+    // 辅助方法：检查URL是否是Apple的验证服务器
+    private func isAppleReceiptValidationRequest(_ url: URL) -> Bool {
+        let host = url.host ?? ""
+        return host.contains("buy.itunes.apple.com") || 
+               host.contains("sandbox.itunes.apple.com") ||
+               host.contains("buy.itunes.apple.com") ||
+               host.contains("buy.itunes")
+    }
+    
+    // 辅助方法：从URL提取Bundle ID
+    private func extractBundleID(from url: URL) -> String? {
+        // 实现从URL中提取bundleID的逻辑
+        return url.pathComponents.last
+    }
+    
+    // 辅助方法：从URL提取Product ID
+    private func extractProductID(from url: URL) -> String? {
+        // 实现从URL或请求体中提取productID的逻辑
+        // 可能需要检查查询参数或请求体
+        return "com.example.product" // 默认产品ID，实际应该从请求中提取
     }
 }
