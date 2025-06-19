@@ -7,7 +7,5 @@
         <key>com.apple.networkextension.filter-data</key>
         <string>FilterDataProvider</string>
     </dict>
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>需要使用本地网络来拦截内购验证请求</string>
 </dict>
 </plist>

@@ -21,12 +21,11 @@ class NetworkExtensionManager {
             config.filterBrowsers = false
             config.filterSockets = true
             
-            // 设置过滤提供者
+            // 设置过滤提供者 - 改为使用Bundle标识符
             let bundleId = Bundle.main.bundleIdentifier!
-            config.filterDataProviderBundleIdentifier = "\(bundleId).FilterDataProvider"
+            filterManager.providerConfiguration = config
             
             // 启用过滤器
-            filterManager.providerConfiguration = config
             filterManager.isEnabled = true
             
             // 保存配置

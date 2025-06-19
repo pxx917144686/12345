@@ -64,11 +64,11 @@ struct ContentView: View {
                     .font(.headline)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("1. 点击"启动代理"按钮开启内购拦截")
+                    Text("1. 点击\"启动代理\"按钮开启内购拦截")
                     Text("2. 打开任何包含内购的应用")
                     Text("3. 尝试购买内购项目（会弹出支付框）")
                     Text("4. 取消支付，内购会自动激活")
-                    Text("5. 使用完成后点击"停止代理"")
+                    Text("5. 使用完成后点击\"停止代理\"")
                 }
                 .font(.callout)
                 .padding(.leading, 10)
