@@ -113,7 +113,7 @@ class FilterDataProvider: NEFilterDataProvider {
                     fullResponse.append(jsonData)
                     
                     logger.log("成功生成伪造收据: \(bundleID) / \(productID)")
-                    return NEFilterDataVerdict.modifyData(fullResponse)
+                    return NEFilterDataVerdict.allow(withResponseData: fullResponse)
                 }
             }
         }
